@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Caça ao Mosquito (Tap) — 60s</title>
+  <style>
+    :root{
+      --bg1:#071a12; --bg2:#0b2a24;
+      --hud:#e9fff3; --muted:rgba(233,255,243,.72);
+      --accent:#35ff9a; --danger:#ff4d6d;
+    }
+    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{
+      background: radial-gradient(1200px 800px at 20% 10%, rgba(53,255,154,.14), transparent 55%),
+                  radial-gradient(1000px 700px at 80% 30%, rgba(255,77,109,.10), transparent 55%),
+                  linear-gradient(160deg, var(--bg1), var(--bg2));
+      overflow:hidden;
+      user-select:none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    canvas{display:block; width:100vw; height:100vh; touch-action:manipulation;}
+
+    .hud{
+      position:fixed;
+      top: env(safe-area-inset-top, 0px);
+      left: env(safe-area-inset-left, 0px);
+      right: env(safe-area-inset-right, 0px);
+      padding: 12px 14px;
+      display:flex; gap:12px; align-items:center; justify-content:space-between;
+      pointer-events:none;
+      z-index: 10;
+    }
+    .pill{
+      background: rgba(0,0,0,.25);
+      border: 1px solid rgba(233,255,243,.16);
+      backdrop-filter: blur(10px);
+      border-radius: 999px;
+      padding: 10px 12px;
+      color: var(--hud);
+      display:flex; gap:10px; align-items:center;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+      font-weight:900;
+    }
+    .pill small{color:var(--muted); font-weight:950; letter-spacing:.4px;}
+
+    .bottomNote{
+      position:fixed;
+      left: 12px; right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      color: rgba(233,255,243,.70);
+      font-size: 12px;
+      text-align:center;
+      pointer-events:none;
+      z-index: 10;
+    }
+
+    .center{
+      position:fixed; inset:0;
+      display:flex; align-items:center; justify-content:center;
+      padding:24px;
+      z-index: 20;
+    }
+    .card{
+      width:min(580px, 94vw);
+      background: rgba(0,0,0,.32);
+      border: 1px solid rgba(233,255,243,.18);
+      border-radius: 18px;
+      padding: 18px 16px;
+      color: var(--hud);
+      backdrop-filter: blur(12px);
+      box-shadow: 0 16px 50px rgba(0,0,0,.35);
+      text-align:left;
+    }
+    .card h1{margin:0 0 8px; font-size:18px;}
+    .card p{margin:0 0 12px; color: var(--muted); line-height:1.35; font-size:14px;}
+    .row{display:flex; gap:10px; flex-wrap:wrap;}
+    button{
+      appearance:none; border:0; border-radius:12px;
+      padding:12px 14px; font-weight:1000; cursor:pointer;
+      flex:1; min-width:150px;
+    }
+    .btnStart{background: linear-gradient(135deg, rgba(53,255,154,.95), rgba(53,255,154,.65)); color:#042010;}
+    .btnHow{background: rgba(233,255,243,.10); color: var(--hud); border:1px solid rgba(233,255,243,.18);}
+    .badge{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 10px; border-radius:999px;
+      background: rgba(255,77,109,.12);
+      border: 1px solid rgba(255,77,109,.25);
+      color: var(--hud); font-size:12px; font-weight:950;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div class="hud">
+    <div class="pill"><small>TEMPO</small><span id="time">60.0s</span></div>
+    <div class="pill"><small>PONTOS</small><span id="score">0</span></div>
+    <div class="pill"><small>ABATIDOS</small><span id="kills">0</span></div>
+  </div>
+
+  <div class="bottomNote">
+    Idealizado por <b>Ernandes Sobreira</b> para <b>educação ambiental</b> · toque para eliminar 🦟 e secar 🪣💧
+  </div>
+
+  <div class="center" id="overlay">
+    <div class="card" id="card">
+      <h1>🎯 Caça ao Mosquito (tap) — 60 segundos</h1>
+      <p>
+        Toque na tela: o alvo vai até seu toque e elimina mosquitos 🦟 próximos.<br>
+        <b>Objetivo:</b> matar mosquitos <b>e acabar com os recipientes de água parada</b> 🪣💧 (3 toques perto para secar).<br>
+        A cada <b>5 segundos</b>, surgem recipientes novos (1 a 5 aleatórios) que geram mais mosquitos.
+      </p>
+      <div class="row">
+        <button class="btnStart" id="btnStart">Começar</button>
+        <button class="btnHow" id="btnHow">Como jogar</button>
+      </div>
+      <div style="margin-top:10px;">
+        <span class="badge">Priorize 🪣💧: cada um vira um “criador” de 🦟</span>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d', { alpha:false });
+
+  const elTime = document.getElementById('time');
+  const elScore = document.getElementById('score');
+  const elKills = document.getElementById('kills');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+  const btnStart = document.getElementById('btnStart');
+  const btnHow = document.getElementById('btnHow');
+
+  let W=0, H=0, DPR=1;
+  function resize(){
+    DPR = Math.min(2, window.devicePixelRatio || 1);
+    W = Math.floor(window.innerWidth);
+    H = Math.floor(window.innerHeight);
+    canvas.width = Math.floor(W*DPR);
+    canvas.height = Math.floor(H*DPR);
+    canvas.style.width = W+'px';
+    canvas.style.height = H+'px';
+    ctx.setTransform(DPR,0,0,DPR,0,0);
+  }
+  window.addEventListener('resize', resize, {passive:true});
+  resize();
+
+  // --- Game state
+  let running=false;
+  let timeLeft=60.0;
+  let lastT=0;
+  let score=0, kills=0;
+
+  const target = { x: W*0.5, y: H*0.7, r: 34, pulse:0 };
+
+  const mosquitoes = [];
+  const waters = [];
+  const pops = [];
+
+  let spawnAcc=0;         // base mosquito flow
+  let waterTimer=0;       // spawn water every 5s
+
+  const rand=(a,b)=>a+Math.random()*(b-a);
+  const clamp=(v,a,b)=>Math.max(a, Math.min(b,v));
+  const dist2=(ax,ay,bx,by)=>{const dx=ax-bx, dy=ay-by; return dx*dx+dy*dy;};
+
+  function updateHUD(){
+    elTime.textContent = `${timeLeft.toFixed(1)}s`;
+    elScore.textContent = String(score);
+    elKills.textContent = String(kills);
+  }
+
+  function addPop(x,y,text){
+    pops.push({ x, y, text, t: 0.85, up: 28 });
+  }
+
+  function resetGame(){
+    running=false; timeLeft=60.0; score=0; kills=0;
+    mosquitoes.length=0; waters.length=0; pops.length=0;
+    spawnAcc=0; waterTimer=0;
+    target.x=W*0.5; target.y=H*0.7; target.pulse=0;
+    updateHUD();
+  }
+
+  function spawnMosquito(fromX, fromY, boosted=false){
+    const fromWater = typeof fromX === "number" && typeof fromY === "number";
+    const size = rand(18, 28);
+    let x,y,vx,vy;
+
+    if(fromWater){
+      x = fromX + rand(-18, 18);
+      y = fromY + rand(-18, 18);
+      const ang = rand(0, Math.PI*2);
+      const sp = rand(75, 150) + (60 - timeLeft) * 1.4 + (boosted?50:0);
+      vx = Math.cos(ang)*sp;
+      vy = Math.sin(ang)*sp;
+    } else {
+      const fromLeft = Math.random()<0.5;
+      y = rand(80, H-120);
+      x = fromLeft ? -50 : W+50;
+      vx = (fromLeft ? 1 : -1) * (rand(90, 190) + (60 - timeLeft)*2.0);
+      vy = rand(-25, 25);
+    }
+
+    mosquitoes.push({
+      x,y,vx,vy,
+      r: size,
+      alive: true,
+      wobSpd: rand(3.0, 5.5),
+      phase: rand(0, Math.PI*2),
+    });
+  }
+
+  function spawnWaterOne(){
+    const x = rand(60, W-60);
+    const y = rand(140, H-120);
+    waters.push({
+      x,y, r: 30,
+      hp: 3,
+      alive: true,
+      spawnAcc: 0
+    });
+  }
+
+  function spawnWaterWave(){
+    // quantidade aleatória: 1 a 5 (com mais chance de 2-3)
+    const options = [1,2,2,3,3,4,5];
+    const n = options[Math.floor(Math.random()*options.length)];
+    for(let i=0;i<n;i++) spawnWaterOne();
+    addPop(W*0.5, 110, `+${n} água(s) parada(s) 🪣💧`);
+    // burst inicial em cima dos últimos recipientes
+    for(let i=waters.length-n; i<waters.length; i++){
+      const w = waters[i];
+      for(let k=0;k<3;k++) spawnMosquito(w.x, w.y, true);
+    }
+  }
+
+  // --- Rendering
+  function drawBackground(){
+    ctx.fillStyle = "#071a12";
+    ctx.fillRect(0,0,W,H);
+
+    const g = ctx.createRadialGradient(W*0.5,H*0.35, 40, W*0.5,H*0.35, Math.max(W,H)*0.85);
+    g.addColorStop(0, "rgba(53,255,154,0.08)");
+    g.addColorStop(0.55, "rgba(0,0,0,0)");
+    g.addColorStop(1, "rgba(0,0,0,0.38)");
+    ctx.fillStyle = g;
+    ctx.fillRect(0,0,W,H);
+
+    ctx.globalAlpha = 0.16;
+    for (let i=0;i<50;i++){
+      const x = (i*97 + (performance.now()*0.02)) % W;
+      const y = (i*53 + (performance.now()*0.01)) % H;
+      ctx.beginPath();
+      ctx.arc(x,y,(i%3)+0.6,0,Math.PI*2);
+      ctx.fillStyle = "rgba(233,255,243,0.55)";
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function drawEmoji(text, x, y, size){
+    ctx.save();
+    ctx.font = `${size}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = "rgba(0,0,0,0.38)";
+    ctx.fillText(text, x+1.5, y+2);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(text, x, y);
+    ctx.restore();
+  }
+
+  function drawTarget(){
+    const x=target.x, y=target.y, r=target.r;
+    const pulse = target.pulse;
+
+    ctx.save();
+    if(pulse>0){
+      ctx.globalAlpha = 0.55 * pulse;
+      ctx.beginPath();
+      ctx.arc(x,y, r+20*(1-pulse), 0, Math.PI*2);
+      ctx.strokeStyle = "rgba(53,255,154,0.9)";
+      ctx.lineWidth = 4;
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 0.95;
+
+    ctx.beginPath();
+    ctx.arc(x,y,r+10,0,Math.PI*2);
+    ctx.fillStyle="rgba(0,0,0,0.20)";
+    ctx.fill();
+
+    const rings=[{rr:r,a:.20},{rr:r-10,a:.24},{rr:r-20,a:.28}];
+    for(const g of rings){
+      ctx.beginPath();
+      ctx.arc(x,y,g.rr,0,Math.PI*2);
+      ctx.strokeStyle = `rgba(233,255,243,${g.a})`;
+      ctx.lineWidth=3;
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle="rgba(53,255,154,0.85)";
+    ctx.lineWidth=2;
+    ctx.beginPath();
+    ctx.moveTo(x-r-10,y); ctx.lineTo(x+r+10,y);
+    ctx.moveTo(x,y-r-10); ctx.lineTo(x,y+r+10);
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(x,y,4,0,Math.PI*2);
+    ctx.fillStyle="rgba(53,255,154,0.95)";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawWaters(){
+    for(const w of waters){
+      if(!w.alive) continue;
+
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      ctx.beginPath();
+      ctx.arc(w.x, w.y, w.r+10, 0, Math.PI*2);
+      ctx.strokeStyle="rgba(255,77,109,0.20)";
+      ctx.lineWidth=3;
+      ctx.stroke();
+      ctx.restore();
+
+      drawEmoji("🪣💧", w.x, w.y, 34);
+
+      // hp dots
+      ctx.save();
+      ctx.globalAlpha = 0.85;
+      for(let i=0;i<w.hp;i++){
+        ctx.beginPath();
+        ctx.arc(w.x - 14 + i*14, w.y + 28, 4, 0, Math.PI*2);
+        ctx.fillStyle = "rgba(255,77,109,0.85)";
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+  }
+
+  function drawMosquitoes(){
+    for(const m of mosquitoes){
+      if(!m.alive) continue;
+      drawEmoji("🦟", m.x, m.y, 30);
+    }
+  }
+
+  function drawPops(dt){
+    for(const p of pops){
+      p.t -= dt;
+      p.y -= (p.up*dt);
+      if(p.t <= 0) continue;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.t);
+      ctx.font = `900 14px system-ui, -apple-system, Segoe UI, Roboto`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillText(p.text, p.x+1.2, p.y+1.2);
+      ctx.fillStyle = "rgba(233,255,243,0.95)";
+      ctx.fillText(p.text, p.x, p.y);
+      ctx.restore();
+    }
+    for(let i=pops.length-1;i>=0;i--){
+      if(pops[i].t <= 0) pops.splice(i,1);
+    }
+  }
+
+  function endGame(){
+    running=false;
+    overlay.style.display='flex';
+    card.querySelector('h1').textContent='⏱️ Tempo acabou!';
+    card.querySelector('p').innerHTML =
+      `Você abateu <b>${kills}</b> mosquitos 🦟 e fez <b>${score}</b> pontos em 60s.<br>`+
+      `Lembrete: eliminar <b>água parada</b> reduz os criadouros.<br><br>`+
+      `<b>Idealizado por Ernandes Sobreira para educação ambiental.</b>`;
+    btnStart.textContent='Jogar de novo';
+    btnHow.textContent='Como jogar';
+  }
+
+  // --- Tap action
+  function tapAt(x,y){
+    if(!running) return;
+
+    target.x = clamp(x, 20, W-20);
+    target.y = clamp(y, 90, H-30);
+    target.pulse = 1;
+
+    const killR = 58;
+    const killR2 = killR*killR;
+
+    let hit = 0;
+
+    // kill mosquitoes near target
+    for(const m of mosquitoes){
+      if(!m.alive) continue;
+      if(dist2(target.x,target.y,m.x,m.y) <= killR2){
+        m.alive=false;
+        hit++;
+        kills++;
+        score += 12;
+      }
+    }
+
+    // dry water containers (3 hits)
+    for(const w of waters){
+      if(!w.alive) continue;
+      const rr = 70;
+      if(dist2(target.x,target.y,w.x,w.y) <= rr*rr){
+        w.hp -= 1;
+        score += 8;
+        addPop(w.x, w.y-22, "secando água!");
+        if(w.hp <= 0){
+          w.alive=false;
+          score += 30;
+          addPop(w.x, w.y-22, "criadouro eliminado!");
+        }
+      }
+    }
+
+    if(hit>0){
+      addPop(target.x, target.y-28, `+${hit} 🦟`);
+      if(navigator.vibrate) navigator.vibrate(16);
+    } else {
+      addPop(target.x, target.y-28, "tap!");
+    }
+  }
+
+  // --- Loop
+  function loop(t){
+    if(!running) return;
+
+    const dt = Math.min(0.033, (t-lastT)/1000);
+    lastT = t;
+
+    timeLeft -= dt;
+    if(timeLeft <= 0){
+      timeLeft = 0;
+      updateHUD();
+      endGame();
+      return;
+    }
+
+    target.pulse = Math.max(0, target.pulse - dt*2.6);
+
+    // base mosquito flow (always something happening)
+    const difficulty = 1 + (60 - timeLeft)/60;
+    const spawnRate = 1.2 * difficulty; // more active from start
+    spawnAcc += dt * spawnRate;
+    while(spawnAcc >= 1){
+      spawnAcc -= 1;
+      spawnMosquito();
+      if(Math.random() < 0.25) spawnMosquito();
+    }
+
+    // spawn new waters every 5s (random amount)
+    waterTimer += dt;
+    if(waterTimer >= 5){
+      waterTimer -= 5;
+      spawnWaterWave();
+    }
+
+    // water continuously spawns mosquitoes
+    for(const w of waters){
+      if(!w.alive) continue;
+      const wRate = 1.1 + 0.35*difficulty; // per water
+      w.spawnAcc += dt * wRate;
+      while(w.spawnAcc >= 1){
+        w.spawnAcc -= 1;
+        spawnMosquito(w.x, w.y, true);
+      }
+    }
+
+    // move mosquitoes
+    for(const m of mosquitoes){
+      if(!m.alive) continue;
+      m.phase += dt*m.wobSpd;
+      m.x += m.vx*dt;
+      m.y += m.vy*dt + Math.sin(m.phase)*0.7;
+
+      if(m.x < 20 || m.x > W-20) m.vx *= -1;
+      if(m.y < 90 || m.y > H-40) m.vy *= -1;
+
+      m.vx *= (1 - dt*0.02);
+      m.vy *= (1 - dt*0.02);
+    }
+
+    // cleanup
+    if(mosquitoes.length > 520){
+      const alive = mosquitoes.filter(mm=>mm.alive);
+      mosquitoes.length=0;
+      mosquitoes.push(...alive.slice(-360));
+    }
+
+    drawBackground();
+    drawWaters();
+    drawMosquitoes();
+    drawTarget();
+    drawPops(dt);
+
+    updateHUD();
+    requestAnimationFrame(loop);
+  }
+
+  function startGame(){
+    resetGame();
+    running=true;
+    overlay.style.display='none';
+    lastT = performance.now();
+
+    // START with 1 water bucket immediately
+    spawnWaterOne();
+    addPop(W*0.5, 110, "Começou! Água parada já existe 🪣💧");
+    // and a small initial mosquito presence
+    for(let i=0;i<6;i++) spawnMosquito(waters[0].x, waters[0].y, true);
+
+    requestAnimationFrame(loop);
+  }
+
+  // Input: tap
+  function getPoint(e){
+    if(e.touches && e.touches[0]) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
+    return {x:e.clientX, y:e.clientY};
+  }
+
+  canvas.addEventListener('click', (e)=>{
+    const p = getPoint(e);
+    tapAt(p.x, p.y);
+  });
+
+  canvas.addEventListener('touchstart', (e)=>{
+    e.preventDefault();
+    const p = getPoint(e);
+    tapAt(p.x, p.y);
+  }, {passive:false});
+
+  // Buttons
+  btnStart.addEventListener('click', startGame);
+
+  btnHow.addEventListener('click', ()=>{
+    overlay.style.display='flex';
+    card.querySelector('h1').textContent='Como jogar';
+    card.querySelector('p').innerHTML =
+      `1) Toque na tela para mover o alvo e atacar.<br>`+
+      `2) Elimine mosquitos 🦟 tocando perto deles.<br>`+
+      `3) Elimine recipientes 🪣💧 (água parada) com <b>3 toques perto</b> para secar.<br>`+
+      `4) A cada <b>5 segundos</b> surgem novos recipientes (1 a 5 aleatórios), gerando ainda mais mosquitos.<br><br>`+
+      `<b>Objetivo:</b> matar mosquitos e acabar com os criadouros.<br>`+
+      `<b>Idealizado por Ernandes Sobreira para educação ambiental.</b>`;
+    btnStart.textContent='Começar';
+  });
+
+  resetGame();
+})();
+</script>
+</body>
+</html>
