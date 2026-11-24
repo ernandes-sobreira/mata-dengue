@@ -1,566 +1,174 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Caça ao Mosquito (Tap) — 60s</title>
-  <style>
-    :root{
-      --bg1:#071a12; --bg2:#0b2a24;
-      --hud:#e9fff3; --muted:rgba(233,255,243,.72);
-      --accent:#35ff9a; --danger:#ff4d6d;
-    }
-    html,body{height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
-    body{
-      background: radial-gradient(1200px 800px at 20% 10%, rgba(53,255,154,.14), transparent 55%),
-                  radial-gradient(1000px 700px at 80% 30%, rgba(255,77,109,.10), transparent 55%),
-                  linear-gradient(160deg, var(--bg1), var(--bg2));
-      overflow:hidden;
-      user-select:none;
-      -webkit-tap-highlight-color: transparent;
-    }
-    canvas{display:block; width:100vw; height:100vh; touch-action:manipulation;}
-
-    .hud{
-      position:fixed;
-      top: env(safe-area-inset-top, 0px);
-      left: env(safe-area-inset-left, 0px);
-      right: env(safe-area-inset-right, 0px);
-      padding: 12px 14px;
-      display:flex; gap:12px; align-items:center; justify-content:space-between;
-      pointer-events:none;
-      z-index: 10;
-    }
-    .pill{
-      background: rgba(0,0,0,.25);
-      border: 1px solid rgba(233,255,243,.16);
-      backdrop-filter: blur(10px);
-      border-radius: 999px;
-      padding: 10px 12px;
-      color: var(--hud);
-      display:flex; gap:10px; align-items:center;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-      font-weight:900;
-    }
-    .pill small{color:var(--muted); font-weight:950; letter-spacing:.4px;}
-
-    .bottomNote{
-      position:fixed;
-      left: 12px; right: 12px;
-      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-      color: rgba(233,255,243,.70);
-      font-size: 12px;
-      text-align:center;
-      pointer-events:none;
-      z-index: 10;
-    }
-
-    .center{
-      position:fixed; inset:0;
-      display:flex; align-items:center; justify-content:center;
-      padding:24px;
-      z-index: 20;
-    }
-    .card{
-      width:min(580px, 94vw);
-      background: rgba(0,0,0,.32);
-      border: 1px solid rgba(233,255,243,.18);
-      border-radius: 18px;
-      padding: 18px 16px;
-      color: var(--hud);
-      backdrop-filter: blur(12px);
-      box-shadow: 0 16px 50px rgba(0,0,0,.35);
-      text-align:left;
-    }
-    .card h1{margin:0 0 8px; font-size:18px;}
-    .card p{margin:0 0 12px; color: var(--muted); line-height:1.35; font-size:14px;}
-    .row{display:flex; gap:10px; flex-wrap:wrap;}
-    button{
-      appearance:none; border:0; border-radius:12px;
-      padding:12px 14px; font-weight:1000; cursor:pointer;
-      flex:1; min-width:150px;
-    }
-    .btnStart{background: linear-gradient(135deg, rgba(53,255,154,.95), rgba(53,255,154,.65)); color:#042010;}
-    .btnHow{background: rgba(233,255,243,.10); color: var(--hud); border:1px solid rgba(233,255,243,.18);}
-    .badge{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:8px 10px; border-radius:999px;
-      background: rgba(255,77,109,.12);
-      border: 1px solid rgba(255,77,109,.25);
-      color: var(--hud); font-size:12px; font-weight:950;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Caça ao Mosquito · Acabe com a água parada</title>
+<style>
+:root{--main:#7b1fa2;--deep:#4a148c;--soft:#f3e5f5;--line:#e6d6ea;--ink:#2a1f2d;--mut:#6b5b70;--bad:#c62828;--good:#2e7d32}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;background:#fff;color:var(--ink);line-height:1.45}
+.wrap{max-width:760px;margin:0 auto;padding:12px 14px 40px}
+.wrap>*{min-width:0}
+a.hub{color:var(--deep);font-weight:700;text-decoration:none;font-size:.9rem}
+header{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px}
+h1{font-size:1.4rem;color:var(--deep)}
+h2{font-size:1.15rem;color:var(--deep);margin-bottom:6px}
+.hud{display:flex;gap:6px;flex-wrap:wrap}
+.pill{background:var(--soft);color:var(--deep);border-radius:99px;padding:5px 11px;font-weight:700;font-size:.86rem}
+.card{border:2px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px;background:#fff}
+.btn{background:var(--main);color:#fff;border:0;border-radius:12px;padding:12px 22px;font-size:1rem;font-weight:700;cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--deep)}.btn.ghost{background:#fff;color:var(--deep);border:2px solid var(--main)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.small{font-size:.86rem;color:var(--mut)}
+.meter .lab{display:flex;justify-content:space-between;font-weight:700;font-size:.9rem}
+.track{position:relative;height:18px;border-radius:10px;background:#f4eef5;overflow:hidden;margin:4px 0 2px}
+.track i{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(90deg,#66bb6a,#ffa726,#e53935);transition:width .25s}
+.track b{position:absolute;top:-2px;bottom:-2px;width:3px;background:var(--deep)}
+#campo{position:relative;height:360px;border-radius:18px;overflow:hidden;border:2px solid var(--line);margin-top:8px;
+ background:linear-gradient(180deg,#e1f5fe 0%,#e1f5fe 22%,#dcedc8 22%,#c5e1a5 100%);touch-action:manipulation;user-select:none}
+.casa{position:absolute;left:50%;top:4%;transform:translateX(-50%);font-size:44px;pointer-events:none}
+.it{position:absolute;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:16px;border:3px solid #fff;background:rgba(255,255,255,.85);
+ font-size:30px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.it .agua{position:absolute;left:4px;right:4px;bottom:4px;height:0;background:rgba(33,150,243,.35);border-radius:0 0 10px 10px;pointer-events:none}
+.it.cheio{border-color:#e53935;animation:tre .3s infinite}
+.it.bicho{border-radius:50%;background:rgba(232,245,233,.9)}
+@keyframes tre{50%{transform:translateX(2px)}}
+.mq{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;font-size:26px;display:flex;align-items:center;justify-content:center;cursor:pointer;border-radius:50%}
+.fx{position:absolute;font-weight:800;pointer-events:none;animation:up .9s forwards;font-size:.95rem;white-space:nowrap}
+@keyframes up{to{transform:translateY(-34px);opacity:0}}
+.legend{display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin:10px 0;font-size:.9rem}
+.legend div{background:#faf5fb;border-radius:10px;padding:7px 9px}
+.opts{display:grid;gap:10px;margin-top:12px}
+.opt{text-align:left;border:2px solid var(--line);background:#fff;border-radius:14px;padding:13px 15px;font-size:1rem;cursor:pointer;font-family:inherit;color:var(--ink)}
+.opt:hover{border-color:var(--main)}.opt.right{border-color:var(--good);background:#e8f5e9}.opt.wrong{border-color:var(--bad);background:#ffebee}
+.fb{margin-top:12px;padding:12px 14px;border-radius:14px;font-size:.96rem;display:none}
+.fb.good{display:block;background:#e8f5e9;color:#1b5e20}.fb.bad{display:block;background:#ffebee;color:#8e1b1b}
+.big{font-size:2.3rem;font-weight:800;color:var(--deep)}
+.fases{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.fases div{background:#faf5fb;border-radius:12px;padding:10px 6px;text-align:center;font-size:.82rem;font-weight:700;color:var(--deep)}
+.fases div span{display:block;font-size:1.5rem}
+.ranking{border:3px solid var(--main);border-radius:18px;padding:0 16px 12px;overflow:hidden;margin-top:12px}
+.ranking h3{font-size:1rem;margin:0 -16px 8px;padding:10px 16px;background:var(--main);color:#fff}
+.ranking ol{list-style:none}.ranking li{display:flex;justify-content:space-between;gap:10px;padding:7px 4px;border-bottom:1px solid var(--line);font-size:.92rem}
+.ranking li:last-child{border-bottom:0}.pos{display:inline-block;min-width:2.1em;font-weight:800;color:var(--deep)}
+.savebox{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.savebox input{flex:1;min-width:160px;border:2px solid var(--line);border-radius:12px;padding:11px;font-size:1rem;font-family:inherit}
+@media(max-width:560px){#campo{height:320px}h1{font-size:1.2rem}}
+</style>
 </head>
 <body>
-  <canvas id="c"></canvas>
-
-  <div class="hud">
-    <div class="pill"><small>TEMPO</small><span id="time">60.0s</span></div>
-    <div class="pill"><small>PONTOS</small><span id="score">0</span></div>
-    <div class="pill"><small>ABATIDOS</small><span id="kills">0</span></div>
-  </div>
-
-  <div class="bottomNote">
-    Idealizado por <b>Ernandes Sobreira</b> para <b>educação ambiental</b> · toque para eliminar 🦟 e secar 🪣💧
-  </div>
-
-  <div class="center" id="overlay">
-    <div class="card" id="card">
-      <h1>🎯 Caça ao Mosquito (tap) — 60 segundos</h1>
-      <p>
-        Toque na tela: o alvo vai até seu toque e elimina mosquitos 🦟 próximos.<br>
-        <b>Objetivo:</b> matar mosquitos <b>e acabar com os recipientes de água parada</b> 🪣💧 (3 toques perto para secar).<br>
-        A cada <b>5 segundos</b>, surgem recipientes novos (1 a 5 aleatórios) que geram mais mosquitos.
-      </p>
-      <div class="row">
-        <button class="btnStart" id="btnStart">Começar</button>
-        <button class="btnHow" id="btnHow">Como jogar</button>
-      </div>
-      <div style="margin-top:10px;">
-        <span class="badge">Priorize 🪣💧: cada um vira um “criador” de 🦟</span>
-      </div>
-    </div>
-  </div>
-
+<div class="wrap">
+<a class="hub" href="https://ernandes-sobreira.github.io/jogos-ambientais/">← Todos os jogos</a>
+<header>
+  <h1>🦟 Caça ao Mosquito</h1>
+  <div class="hud" id="hud" style="display:none"><span class="pill" id="hF">Fase 1/3</span><span class="pill" id="hP">0 pts</span><span class="pill" id="hT">⏱ 40 s</span></div>
+</header>
+<main id="tela"></main>
+<div class="ranking" id="rankBox"><h3>Ranking Global</h3><ol id="rankList"><li><span>Carregando o ranking...</span></li></ol><p class="small" id="rankNote"></p></div>
+</div>
 <script>
-(() => {
-  const canvas = document.getElementById('c');
-  const ctx = canvas.getContext('2d', { alpha:false });
+const $=id=>document.getElementById(id);
+const rr=(a,b)=>a+Math.random()*(b-a);
+const shuf=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let actx=null;function beep(f,d){try{actx=actx||new (window.AudioContext||window.webkitAudioContext)();const o=actx.createOscillator(),g=actx.createGain();o.frequency.value=f;g.gain.setValueAtTime(.07,actx.currentTime);g.gain.exponentialRampToValueAtTime(.001,actx.currentTime+d);o.connect(g);g.connect(actx.destination);o.start();o.stop(actx.currentTime+d);}catch(e){}}
 
-  const elTime = document.getElementById('time');
-  const elScore = document.getElementById('score');
-  const elKills = document.getElementById('kills');
-  const overlay = document.getElementById('overlay');
-  const card = document.getElementById('card');
-  const btnStart = document.getElementById('btnStart');
-  const btnHow = document.getElementById('btnHow');
+const CRIA=['🪣','🛞','🪴','🍶','🥫'];
+const NOMES={'🪣':'Balde','🛞':'Pneu','🪴':'Prato de vaso','🍶':'Garrafa','🥫':'Lata'};
+const BICHOS=['🐸','🦎'];
+const FASES=[
+ {nome:'Quintal',ico:'🏡',dur:40,meta:8,cria:2.6,enche:9,ritmo:1,bicho:.12,
+  txt:'Um quintal com alguns recipientes. Esvazie a água antes que ela vire criadouro.',
+  q:{p:'Onde o Aedes aegypti põe os ovos?',o:[{t:'Na parede de recipientes com água parada',ok:1},{t:'No fundo de rios com correnteza forte',ok:0},{t:'Nas folhas secas do chão da mata',ok:0}],e:'A fêmea põe os ovos na parede do recipiente, logo acima da água. Os ovos aguentam meses no seco, por isso é bom esfregar as bordas.'}},
+ {nome:'Época de chuva',ico:'🌧️',dur:45,meta:10,cria:1.9,enche:7,ritmo:1.25,bicho:.14,
+  txt:'Choveu. Os recipientes enchem mais rápido e aparecem mais deles.',
+  q:{p:'Por que os casos de dengue costumam subir na época de chuva?',o:[{t:'A chuva enche recipientes e cria mais criadouros',ok:1},{t:'A chuva traz o vírus de outras regiões pelo ar',ok:0},{t:'O mosquito só existe enquanto está chovendo',ok:0}],e:'Chuva e calor juntos aumentam os criadouros e aceleram o ciclo do mosquito, de ovo a adulto.'}},
+ {nome:'Bairro inteiro',ico:'🏘️',dur:50,meta:12,cria:1.4,enche:6,ritmo:1.5,bicho:.16,
+  txt:'Agora é o bairro todo. Muitos recipientes ao mesmo tempo. Priorize os que estão quase cheios.',
+  q:{p:'Qual ação combate melhor o mosquito no bairro?',o:[{t:'Eliminar a água parada toda semana',ok:1},{t:'Matar os mosquitos adultos com o chinelo',ok:0},{t:'Plantar citronela em todos os quintais',ok:0}],e:'Matar o adulto ajuda pouco, porque o criadouro continua produzindo mosquitos. Tirar a água parada corta o ciclo na origem.'}}
+];
+let S,loopId=null,last=0;
+function hud(){$('hud').style.display='flex';$('hF').textContent=FASES[S.f].ico+' Fase '+(S.f+1)+'/3';$('hP').textContent=(S.tot+S.fp)+' pts';$('hT').textContent='⏱ '+Math.max(0,Math.ceil(S.t))+' s';}
 
-  let W=0, H=0, DPR=1;
-  function resize(){
-    DPR = Math.min(2, window.devicePixelRatio || 1);
-    W = Math.floor(window.innerWidth);
-    H = Math.floor(window.innerHeight);
-    canvas.width = Math.floor(W*DPR);
-    canvas.height = Math.floor(H*DPR);
-    canvas.style.width = W+'px';
-    canvas.style.height = H+'px';
-    ctx.setTransform(DPR,0,0,DPR,0,0);
-  }
-  window.addEventListener('resize', resize, {passive:true});
-  resize();
-
-  // --- Game state
-  let running=false;
-  let timeLeft=60.0;
-  let lastT=0;
-  let score=0, kills=0;
-
-  const target = { x: W*0.5, y: H*0.7, r: 34, pulse:0 };
-
-  const mosquitoes = [];
-  const waters = [];
-  const pops = [];
-
-  let spawnAcc=0;         // base mosquito flow
-  let waterTimer=0;       // spawn water every 5s
-
-  const rand=(a,b)=>a+Math.random()*(b-a);
-  const clamp=(v,a,b)=>Math.max(a, Math.min(b,v));
-  const dist2=(ax,ay,bx,by)=>{const dx=ax-bx, dy=ay-by; return dx*dx+dy*dy;};
-
-  function updateHUD(){
-    elTime.textContent = `${timeLeft.toFixed(1)}s`;
-    elScore.textContent = String(score);
-    elKills.textContent = String(kills);
-  }
-
-  function addPop(x,y,text){
-    pops.push({ x, y, text, t: 0.85, up: 28 });
-  }
-
-  function resetGame(){
-    running=false; timeLeft=60.0; score=0; kills=0;
-    mosquitoes.length=0; waters.length=0; pops.length=0;
-    spawnAcc=0; waterTimer=0;
-    target.x=W*0.5; target.y=H*0.7; target.pulse=0;
-    updateHUD();
-  }
-
-  function spawnMosquito(fromX, fromY, boosted=false){
-    const fromWater = typeof fromX === "number" && typeof fromY === "number";
-    const size = rand(18, 28);
-    let x,y,vx,vy;
-
-    if(fromWater){
-      x = fromX + rand(-18, 18);
-      y = fromY + rand(-18, 18);
-      const ang = rand(0, Math.PI*2);
-      const sp = rand(75, 150) + (60 - timeLeft) * 1.4 + (boosted?50:0);
-      vx = Math.cos(ang)*sp;
-      vy = Math.sin(ang)*sp;
-    } else {
-      const fromLeft = Math.random()<0.5;
-      y = rand(80, H-120);
-      x = fromLeft ? -50 : W+50;
-      vx = (fromLeft ? 1 : -1) * (rand(90, 190) + (60 - timeLeft)*2.0);
-      vy = rand(-25, 25);
-    }
-
-    mosquitoes.push({
-      x,y,vx,vy,
-      r: size,
-      alive: true,
-      wobSpd: rand(3.0, 5.5),
-      phase: rand(0, Math.PI*2),
-    });
-  }
-
-  function spawnWaterOne(){
-    const x = rand(60, W-60);
-    const y = rand(140, H-120);
-    waters.push({
-      x,y, r: 30,
-      hp: 3,
-      alive: true,
-      spawnAcc: 0
-    });
-  }
-
-  function spawnWaterWave(){
-    // quantidade aleatória: 1 a 5 (com mais chance de 2-3)
-    const options = [1,2,2,3,3,4,5];
-    const n = options[Math.floor(Math.random()*options.length)];
-    for(let i=0;i<n;i++) spawnWaterOne();
-    addPop(W*0.5, 110, `+${n} água(s) parada(s) 🪣💧`);
-    // burst inicial em cima dos últimos recipientes
-    for(let i=waters.length-n; i<waters.length; i++){
-      const w = waters[i];
-      for(let k=0;k<3;k++) spawnMosquito(w.x, w.y, true);
-    }
-  }
-
-  // --- Rendering
-  function drawBackground(){
-    ctx.fillStyle = "#071a12";
-    ctx.fillRect(0,0,W,H);
-
-    const g = ctx.createRadialGradient(W*0.5,H*0.35, 40, W*0.5,H*0.35, Math.max(W,H)*0.85);
-    g.addColorStop(0, "rgba(53,255,154,0.08)");
-    g.addColorStop(0.55, "rgba(0,0,0,0)");
-    g.addColorStop(1, "rgba(0,0,0,0.38)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0,0,W,H);
-
-    ctx.globalAlpha = 0.16;
-    for (let i=0;i<50;i++){
-      const x = (i*97 + (performance.now()*0.02)) % W;
-      const y = (i*53 + (performance.now()*0.01)) % H;
-      ctx.beginPath();
-      ctx.arc(x,y,(i%3)+0.6,0,Math.PI*2);
-      ctx.fillStyle = "rgba(233,255,243,0.55)";
-      ctx.fill();
-    }
-    ctx.globalAlpha = 1;
-  }
-
-  function drawEmoji(text, x, y, size){
-    ctx.save();
-    ctx.font = `${size}px system-ui, Apple Color Emoji, Segoe UI Emoji`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "rgba(0,0,0,0.38)";
-    ctx.fillText(text, x+1.5, y+2);
-    ctx.fillStyle = "#fff";
-    ctx.fillText(text, x, y);
-    ctx.restore();
-  }
-
-  function drawTarget(){
-    const x=target.x, y=target.y, r=target.r;
-    const pulse = target.pulse;
-
-    ctx.save();
-    if(pulse>0){
-      ctx.globalAlpha = 0.55 * pulse;
-      ctx.beginPath();
-      ctx.arc(x,y, r+20*(1-pulse), 0, Math.PI*2);
-      ctx.strokeStyle = "rgba(53,255,154,0.9)";
-      ctx.lineWidth = 4;
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 0.95;
-
-    ctx.beginPath();
-    ctx.arc(x,y,r+10,0,Math.PI*2);
-    ctx.fillStyle="rgba(0,0,0,0.20)";
-    ctx.fill();
-
-    const rings=[{rr:r,a:.20},{rr:r-10,a:.24},{rr:r-20,a:.28}];
-    for(const g of rings){
-      ctx.beginPath();
-      ctx.arc(x,y,g.rr,0,Math.PI*2);
-      ctx.strokeStyle = `rgba(233,255,243,${g.a})`;
-      ctx.lineWidth=3;
-      ctx.stroke();
-    }
-
-    ctx.strokeStyle="rgba(53,255,154,0.85)";
-    ctx.lineWidth=2;
-    ctx.beginPath();
-    ctx.moveTo(x-r-10,y); ctx.lineTo(x+r+10,y);
-    ctx.moveTo(x,y-r-10); ctx.lineTo(x,y+r+10);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(x,y,4,0,Math.PI*2);
-    ctx.fillStyle="rgba(53,255,154,0.95)";
-    ctx.fill();
-    ctx.restore();
-  }
-
-  function drawWaters(){
-    for(const w of waters){
-      if(!w.alive) continue;
-
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      ctx.beginPath();
-      ctx.arc(w.x, w.y, w.r+10, 0, Math.PI*2);
-      ctx.strokeStyle="rgba(255,77,109,0.20)";
-      ctx.lineWidth=3;
-      ctx.stroke();
-      ctx.restore();
-
-      drawEmoji("🪣💧", w.x, w.y, 34);
-
-      // hp dots
-      ctx.save();
-      ctx.globalAlpha = 0.85;
-      for(let i=0;i<w.hp;i++){
-        ctx.beginPath();
-        ctx.arc(w.x - 14 + i*14, w.y + 28, 4, 0, Math.PI*2);
-        ctx.fillStyle = "rgba(255,77,109,0.85)";
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-  }
-
-  function drawMosquitoes(){
-    for(const m of mosquitoes){
-      if(!m.alive) continue;
-      drawEmoji("🦟", m.x, m.y, 30);
-    }
-  }
-
-  function drawPops(dt){
-    for(const p of pops){
-      p.t -= dt;
-      p.y -= (p.up*dt);
-      if(p.t <= 0) continue;
-
-      ctx.save();
-      ctx.globalAlpha = Math.max(0, p.t);
-      ctx.font = `900 14px system-ui, -apple-system, Segoe UI, Roboto`;
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillStyle = "rgba(0,0,0,0.45)";
-      ctx.fillText(p.text, p.x+1.2, p.y+1.2);
-      ctx.fillStyle = "rgba(233,255,243,0.95)";
-      ctx.fillText(p.text, p.x, p.y);
-      ctx.restore();
-    }
-    for(let i=pops.length-1;i>=0;i--){
-      if(pops[i].t <= 0) pops.splice(i,1);
-    }
-  }
-
-  function endGame(){
-    running=false;
-    overlay.style.display='flex';
-    card.querySelector('h1').textContent='⏱️ Tempo acabou!';
-    card.querySelector('p').innerHTML =
-      `Você abateu <b>${kills}</b> mosquitos 🦟 e fez <b>${score}</b> pontos em 60s.<br>`+
-      `Lembrete: eliminar <b>água parada</b> reduz os criadouros.<br><br>`+
-      `<b>Idealizado por Ernandes Sobreira para educação ambiental.</b>`;
-    btnStart.textContent='Jogar de novo';
-    btnHow.textContent='Como jogar';
-  }
-
-  // --- Tap action
-  function tapAt(x,y){
-    if(!running) return;
-
-    target.x = clamp(x, 20, W-20);
-    target.y = clamp(y, 90, H-30);
-    target.pulse = 1;
-
-    const killR = 58;
-    const killR2 = killR*killR;
-
-    let hit = 0;
-
-    // kill mosquitoes near target
-    for(const m of mosquitoes){
-      if(!m.alive) continue;
-      if(dist2(target.x,target.y,m.x,m.y) <= killR2){
-        m.alive=false;
-        hit++;
-        kills++;
-        score += 12;
-      }
-    }
-
-    // dry water containers (3 hits)
-    for(const w of waters){
-      if(!w.alive) continue;
-      const rr = 70;
-      if(dist2(target.x,target.y,w.x,w.y) <= rr*rr){
-        w.hp -= 1;
-        score += 8;
-        addPop(w.x, w.y-22, "secando água!");
-        if(w.hp <= 0){
-          w.alive=false;
-          score += 30;
-          addPop(w.x, w.y-22, "criadouro eliminado!");
-        }
-      }
-    }
-
-    if(hit>0){
-      addPop(target.x, target.y-28, `+${hit} 🦟`);
-      if(navigator.vibrate) navigator.vibrate(16);
-    } else {
-      addPop(target.x, target.y-28, "tap!");
-    }
-  }
-
-  // --- Loop
-  function loop(t){
-    if(!running) return;
-
-    const dt = Math.min(0.033, (t-lastT)/1000);
-    lastT = t;
-
-    timeLeft -= dt;
-    if(timeLeft <= 0){
-      timeLeft = 0;
-      updateHUD();
-      endGame();
-      return;
-    }
-
-    target.pulse = Math.max(0, target.pulse - dt*2.6);
-
-    // base mosquito flow (always something happening)
-    const difficulty = 1 + (60 - timeLeft)/60;
-    const spawnRate = 1.2 * difficulty; // more active from start
-    spawnAcc += dt * spawnRate;
-    while(spawnAcc >= 1){
-      spawnAcc -= 1;
-      spawnMosquito();
-      if(Math.random() < 0.25) spawnMosquito();
-    }
-
-    // spawn new waters every 5s (random amount)
-    waterTimer += dt;
-    if(waterTimer >= 5){
-      waterTimer -= 5;
-      spawnWaterWave();
-    }
-
-    // water continuously spawns mosquitoes
-    for(const w of waters){
-      if(!w.alive) continue;
-      const wRate = 1.1 + 0.35*difficulty; // per water
-      w.spawnAcc += dt * wRate;
-      while(w.spawnAcc >= 1){
-        w.spawnAcc -= 1;
-        spawnMosquito(w.x, w.y, true);
-      }
-    }
-
-    // move mosquitoes
-    for(const m of mosquitoes){
-      if(!m.alive) continue;
-      m.phase += dt*m.wobSpd;
-      m.x += m.vx*dt;
-      m.y += m.vy*dt + Math.sin(m.phase)*0.7;
-
-      if(m.x < 20 || m.x > W-20) m.vx *= -1;
-      if(m.y < 90 || m.y > H-40) m.vy *= -1;
-
-      m.vx *= (1 - dt*0.02);
-      m.vy *= (1 - dt*0.02);
-    }
-
-    // cleanup
-    if(mosquitoes.length > 520){
-      const alive = mosquitoes.filter(mm=>mm.alive);
-      mosquitoes.length=0;
-      mosquitoes.push(...alive.slice(-360));
-    }
-
-    drawBackground();
-    drawWaters();
-    drawMosquitoes();
-    drawTarget();
-    drawPops(dt);
-
-    updateHUD();
-    requestAnimationFrame(loop);
-  }
-
-  function startGame(){
-    resetGame();
-    running=true;
-    overlay.style.display='none';
-    lastT = performance.now();
-
-    // START with 1 water bucket immediately
-    spawnWaterOne();
-    addPop(W*0.5, 110, "Começou! Água parada já existe 🪣💧");
-    // and a small initial mosquito presence
-    for(let i=0;i<6;i++) spawnMosquito(waters[0].x, waters[0].y, true);
-
-    requestAnimationFrame(loop);
-  }
-
-  // Input: tap
-  function getPoint(e){
-    if(e.touches && e.touches[0]) return {x:e.touches[0].clientX, y:e.touches[0].clientY};
-    return {x:e.clientX, y:e.clientY};
-  }
-
-  canvas.addEventListener('click', (e)=>{
-    const p = getPoint(e);
-    tapAt(p.x, p.y);
-  });
-
-  canvas.addEventListener('touchstart', (e)=>{
-    e.preventDefault();
-    const p = getPoint(e);
-    tapAt(p.x, p.y);
-  }, {passive:false});
-
-  // Buttons
-  btnStart.addEventListener('click', startGame);
-
-  btnHow.addEventListener('click', ()=>{
-    overlay.style.display='flex';
-    card.querySelector('h1').textContent='Como jogar';
-    card.querySelector('p').innerHTML =
-      `1) Toque na tela para mover o alvo e atacar.<br>`+
-      `2) Elimine mosquitos 🦟 tocando perto deles.<br>`+
-      `3) Elimine recipientes 🪣💧 (água parada) com <b>3 toques perto</b> para secar.<br>`+
-      `4) A cada <b>5 segundos</b> surgem novos recipientes (1 a 5 aleatórios), gerando ainda mais mosquitos.<br><br>`+
-      `<b>Objetivo:</b> matar mosquitos e acabar com os criadouros.<br>`+
-      `<b>Idealizado por Ernandes Sobreira para educação ambiental.</b>`;
-    btnStart.textContent='Começar';
-  });
-
-  resetGame();
-})();
+function inicio(){
+ $('hud').style.display='none';$('rankBox').style.display='block';
+ $('tela').innerHTML=`<div class="card"><h2>Acabe com a água parada</h2>
+ <p>O mosquito da dengue nasce na água parada. Toque nos recipientes para esvaziar antes que encham. Se encher, nascem mosquitos.</p>
+ <div class="legend"><div>🪣🛞🪴 Esvaziar · +10</div><div>🦟 Mosquito · +2</div><div>Recipiente encheu · −5 e 3 🦟</div><div>🐸🦎 comem insetos, não toque · −10</div></div>
+ <p class="small">🎯 Meta: terminar cada fase com poucos mosquitos voando. No fim de cada fase há uma pergunta, que vale +20 ou −10.</p>
+ <div class="fases">${FASES.map(F=>`<div><span>${F.ico}</span>${F.nome}</div>`).join('')}</div>
+ <button class="btn" onclick="novo()">Começar →</button></div>`;
+}
+function novo(){S={f:0,tot:0,fp:0,erros:0};salvo=false;$('rankBox').style.display='none';abertura();}
+function abertura(){const F=FASES[S.f];S.fp=0;S.t=F.dur;hud();
+ $('tela').innerHTML=`<div class="card" style="text-align:center"><div class="big">${F.ico}</div><h2>Fase ${S.f+1}: ${F.nome}</h2><p>${F.txt}</p><p class="small" style="margin-top:8px">🎯 Termine com no máximo ${F.meta} mosquitos voando.</p><div class="row" style="justify-content:center;margin-top:12px"><button class="btn" onclick="jogar()">Jogar →</button></div></div>`;}
+function jogar(){
+ const F=FASES[S.f];S.t=F.dur;S.its=[];S.mq=[];S.sp=.3;S.fim=false;
+ $('tela').innerHTML=`<div class="meter"><div class="lab"><span>🦟 Mosquitos voando</span><span id="mqv">0</span></div><div class="track"><i id="mqb"></i><b style="left:${F.meta/30*100}%"></b></div><div class="small">A linha escura é a meta: ${F.meta} mosquitos.</div></div>
+ <div id="campo"><div class="casa">🏠</div></div>`;
+ last=performance.now();cancelAnimationFrame(loopId);loopId=requestAnimationFrame(tick);
+}
+function fx(x,y,t,c){const d=document.createElement('div');d.className='fx';d.textContent=t;d.style.color=c;d.style.left=x+'px';d.style.top=y+'px';$('campo').appendChild(d);setTimeout(()=>d.remove(),900);}
+function nasce(){
+ const F=FASES[S.f],c=$('campo'),W=c.clientWidth,H=c.clientHeight;
+ const bicho=Math.random()<F.bicho;
+ let x,y,ok=false,t=0;while(!ok&&t<20){x=rr(.1,.9)*W;y=rr(.4,.9)*H;ok=S.its.every(i=>Math.hypot(i.x-x,i.y-y)>66);t++;}
+ if(!ok)return;
+ const ic=bicho?BICHOS[Math.floor(Math.random()*2)]:CRIA[Math.floor(Math.random()*CRIA.length)];
+ const el=document.createElement('div');el.className='it'+(bicho?' bicho':'');el.innerHTML=(bicho?'':'<span class="agua"></span>')+ic;
+ el.style.left=x+'px';el.style.top=y+'px';c.appendChild(el);
+ const it={el,x,y,bicho,ic,nivel:0,vida:bicho?3.5:F.enche*rr(.85,1.15)};it.max=it.vida;S.its.push(it);
+ el.addEventListener('pointerdown',e=>{e.preventDefault();toque(it);});
+}
+function toque(it){if(it.feito||S.fim)return;it.feito=true;it.el.remove();
+ if(it.bicho){S.fp-=10;S.erros++;beep(170,.3);fx(it.x,it.y-34,'−10 ele come insetos!','#c62828');}
+ else{S.fp+=10;beep(760,.1);fx(it.x,it.y-34,'+10 '+NOMES[it.ic]+' sem água','#2e7d32');}
+ hud();}
+function soltaMq(x,y){const c=$('campo');const el=document.createElement('div');el.className='mq';el.textContent='🦟';c.appendChild(el);
+ const m={el,x,y,vx:rr(-60,60),vy:rr(-60,-20)};S.mq.push(m);el.addEventListener('pointerdown',e=>{e.preventDefault();if(m.morto||S.fim)return;m.morto=true;el.remove();S.fp+=2;beep(900,.05);fx(m.x,m.y-20,'+2','#2e7d32');hud();});}
+function tick(now){
+ const dt=Math.min(.05,(now-last)/1000);last=now;const F=FASES[S.f],c=$('campo'),W=c.clientWidth,H=c.clientHeight;
+ S.t-=dt;S.sp-=dt;if(S.sp<=0&&S.t>2){nasce();S.sp=F.cria*rr(.7,1.2);}
+ for(const it of S.its){if(it.feito)continue;it.vida-=dt;
+  if(!it.bicho){const f=1-it.vida/it.max;it.el.querySelector('.agua').style.height=(f*46)+'px';if(f>.75)it.el.classList.add('cheio');}
+  if(it.vida<=0){it.feito=true;it.el.remove();
+   if(!it.bicho){S.fp-=5;S.erros++;beep(200,.2);fx(it.x,it.y-34,'−5 virou criadouro','#c62828');for(let k=0;k<3;k++)soltaMq(it.x,it.y);}}}
+ S.its=S.its.filter(i=>!i.feito);
+ for(const m of S.mq){if(m.morto)continue;m.vx+=rr(-120,120)*dt*F.ritmo;m.vy+=rr(-120,120)*dt*F.ritmo;m.vx=Math.max(-90,Math.min(90,m.vx))*F.ritmo/F.ritmo;m.vy=Math.max(-90,Math.min(90,m.vy));
+  m.x+=m.vx*dt*F.ritmo;m.y+=m.vy*dt*F.ritmo;if(m.x<20||m.x>W-20)m.vx*=-1;if(m.y<20||m.y>H-20)m.vy*=-1;m.x=Math.max(20,Math.min(W-20,m.x));m.y=Math.max(20,Math.min(H-20,m.y));
+  m.el.style.left=m.x+'px';m.el.style.top=m.y+'px';}
+ S.mq=S.mq.filter(m=>!m.morto);
+ const n=S.mq.length;$('mqv').textContent=n;$('mqb').style.width=Math.min(100,n/30*100)+'%';hud();
+ if(S.t<=0){fimFase();return;}
+ loopId=requestAnimationFrame(tick);
+}
+function fimFase(){
+ S.fim=true;cancelAnimationFrame(loopId);const F=FASES[S.f],n=S.mq.length,ok=n<=F.meta;S.fp+=ok?30:0;hud();
+ $('tela').innerHTML=`<div class="card"><h2>${ok?'✅ Meta atingida':'⚠️ Mosquitos demais'}</h2><p>Ficaram ${n} mosquitos voando. A meta era no máximo ${F.meta}. ${ok?'+30 pontos.':''}</p>
+ <p style="margin-top:12px"><b>${F.q.p}</b></p><div class="opts">${shuf(F.q.o).map(o=>`<button class="opt" data-ok="${o.ok}">${o.t}</button>`).join('')}</div><div class="fb" id="fb"></div></div>`;
+ const bs=[...document.querySelectorAll('.opt')];
+ bs.forEach(b=>b.onclick=()=>{bs.forEach(x=>{x.disabled=true;if(x.dataset.ok==='1')x.classList.add('right');});const c=b.dataset.ok==='1';if(!c){b.classList.add('wrong');S.erros++;}S.fp+=c?20:-10;hud();
+  const ult=S.f===FASES.length-1;$('fb').className='fb '+(c?'good':'bad');
+  $('fb').innerHTML=(c?'Certo! +20. ':'Não foi dessa vez. −10. ')+F.q.e+`<div class="row" style="margin-top:10px">${ok?`<button class="btn" id="bp">${ult?'Ver resultado →':'Próxima fase →'}</button>`:'<button class="btn" id="bp">Tentar a fase de novo</button><button class="btn ghost" id="bq">Encerrar</button>'}</div>`;
+  $('bp').onclick=()=>{if(ok){S.tot+=S.fp;S.fp=0;if(ult)final();else{S.f++;abertura();}}else abertura();};
+  if($('bq'))$('bq').onclick=()=>final(true);});
+}
+function final(parou){
+ $('rankBox').style.display='block';const nivel=parou?'Fase '+(S.f+1):'Bairro limpo';S.fp=0;hud();
+ $('tela').innerHTML=`<div class="card" style="text-align:center"><div class="big">${parou?'🦟':'🏆'}</div><h2>${parou?'Fim de jogo':'Bairro sem criadouros!'}</h2><div class="big">${S.tot} pts</div><p class="small">${S.erros} erro(s) · chegou até: ${nivel}</p>
+ <div class="savebox"><input id="pName" maxlength="20" placeholder="Seu nome"><button class="btn" id="bS">Salvar no ranking</button></div><p class="small" id="sSt"></p>
+ <div class="row" style="justify-content:center;margin-top:12px"><button class="btn ghost" onclick="inicio()">Jogar de novo</button></div></div>`;
+ $('bS').onclick=()=>salvar(nivel);
+}
+const firebaseConfig={apiKey:"AIzaSyCbXi3UCVl8oLleBzGb6DqWSxbZmZU2yDQ",authDomain:"jogos-ranking.firebaseapp.com",projectId:"jogos-ranking",storageBucket:"jogos-ranking.firebasestorage.app",messagingSenderId:"958784915420",appId:"1:958784915420:web:4212d3ad278f02d600f119"};
+const GAME_ID="mata-dengue";let db=null,fs=null,salvo=false;
+(async()=>{try{const a=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");const f=await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");db=f.getFirestore(a.initializeApp(firebaseConfig));fs=f;carregar();}catch(e){$('rankList').innerHTML='<li><span>Ranking indisponível sem internet.</span></li>';$('rankNote').textContent='O jogo funciona normalmente. O ranking volta quando houver conexão.';}})();
+async function carregar(){if(!db)return;try{const q=fs.query(fs.collection(db,'games',GAME_ID,'scores'),fs.orderBy('score','desc'),fs.limit(10));const sn=await fs.getDocs(q);const r=[];sn.forEach(d=>r.push(d.data()));$('rankNote').textContent='Maior pontuação primeiro.';$('rankList').innerHTML=r.length?r.map((x,i)=>`<li><span><span class="pos">${i+1}º</span>${esc(x.name||'?')}</span><span>${(Number(x.score)||0).toLocaleString('pt-BR')} pts · ${esc(x.level||'')}</span></li>`).join(''):'<li><span>Seja o primeiro do ranking!</span></li>';}catch(e){$('rankList').innerHTML='<li><span>Não foi possível carregar o ranking.</span></li>';}}
+async function salvar(nivel){if(salvo)return;const nome=$('pName').value.trim(),st=$('sSt');if(!nome){st.textContent='Digite seu nome primeiro.';return;}if(!db){st.textContent='Sem conexão com o ranking. O resultado não foi enviado.';return;}
+ $('bS').disabled=true;try{await fs.addDoc(fs.collection(db,'games',GAME_ID,'scores'),{name:nome.slice(0,20),score:Math.max(0,S.tot),level:nivel,ts:fs.serverTimestamp()});salvo=true;st.textContent='Salvo no Ranking Global!';carregar();}catch(e){$('bS').disabled=false;st.textContent='Erro ao salvar. Tente de novo.';}}
+window.__md={get S(){return S},toque};
+inicio();
 </script>
 </body>
 </html>
